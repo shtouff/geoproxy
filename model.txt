@@ -1,0 +1,57 @@
+## data model
+
+# sequencies
+next:gdat:id => string
+next:gadc:id => string
+next:geom:id => string
+
+# geocoding data, identified by X = incr next:gda:id
+# giving the same geometry, differs from one lang to another.
+gdat:X:geom => string (geom:id)
+      :fa => string (formatted_address)
+      :adc => linked list of gadc:id
+      :types => set of string
+      :md5 => string (md5(result from google): make unique combinaison of $lang of the result AND geometry)
+      :lang => string (lang of the data)
+      :ext => string (ext of the data)
+      
+# address_components identified by X = incr next:gac:id
+gadc:X:serial => string (serial number)
+gadc:X:lname => string
+      :sname => string
+      :types => set of string
+
+# geometry data
+geom:X:serial => string (serial number)
+geom:X:gdat => hash of (lang => gdat:id)
+      :loc:type => string (location_type)
+          :lat => string (location latitude)
+          :lng => string (location longitude)
+       :vport:sw:lat => string (viewport southwest)
+                :lng => string
+             :ne:lat => string (viewport northeast)
+                :lng => string
+       :bounds:sw:lat => string (bounds southwest)
+                 :lng => string
+              :ne:lat => string (bounds northeast)
+                 :lng => string
+
+# PKs
+pk:gdatByQuery:rawurlencode($query):$lang => string (gdat:id)
+pk:gdatByFormattedAddress:rawurlencode($formatted_address):$lang => string (gdat:id)
+
+# indexes
+idx:geomBySerial:md5($result) => set of string (gdat:id)
+# (use intersection of these two sets to get ids of geodata matching those coordinates)
+idx:geomByLat:$lat => set of string (gdat:id)
+idx:geomByLng:$ng => set of string (gdat:id)
+# tags: type (use these sets to know the id of geodata matching the tag. Use unions / intersections to simulate JOINS)
+idx:gdatByType:political => set of string (gdat:id) having type: political
+idx:gdatByType:locality => set of string (gdat:id) having type: locality
+# tags: ext
+idx:gdatByExt:castorama => set of string (gdat:id) having ext: castorama shop
+idx:gdatByExt:ratp => set of string (gdat:id) having ext: ratp station or office
+# tags: lang
+idx:gdatByLang:en => set of string (gdat:id) having lang: en
+idx:gdatByLang:fr => set of string (gdat:id) having lang: fr
+# and so on ...

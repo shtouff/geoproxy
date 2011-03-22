@@ -1,0 +1,13 @@
+<?php
+
+require_once (dirname(__FILE__) . '/GeoProxy.php');
+
+$proxy = GeoProxy::singleton();
+
+
+GeoProxy::log(__FILE__, __LINE__
+
+// $method sera égal à 'get', 'post', 'put' ou 'delete'
+$method = strtolower($_SERVER['REQUEST_METHOD']);
+
+?>
