@@ -1,4 +1,0 @@
-<?php
-
-define('CFG_LOGFILE', "/tmp/geoproxy.log");
-?>
