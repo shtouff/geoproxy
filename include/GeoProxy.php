@@ -150,68 +150,63 @@ class GeoProxy
     return $gdat;
   }
   
-  private function mapF2I($_filter)
+  private function mapF2I($_resource, $_filter)
   {
     // maps filter name to redis index
-    $map = array("lang" => "ByLang",
-		 "ext" => "ByExt",
-		 "lat" => "ByLat",
-		 "lng" => "ByLng",
-		 "type" => "ByType",
-		 "serial" => "BySerial",
+    $map = array("gdats:lang"	=> "idx:gdatByLang",
+		 "gdats:ext"	=> "idx:gdatByExt",
+		 "geoms:lat"	=> "idx:geomByLat",
+		 "geoms:lng"	=> "idx:geomByLng",
+		 "gdats:type"	=> "idx:gdatByType",
+		 "geoms:serial"	=> "idx:geomBySerial",
 		 );
 
-    return $map[$_filter];
+    return $map["$_resource:$_filter"];
   }
   
+  private function mapR2I($_resource)
+  {
+    // maps resource name to redis index
 
-  public function getResource($_resource, $_filters) {
     
+  }
+
+  public function getResource($_res)
+  {
+
+  }
+
+  public function getResourceWithFilters($_res, $_filters) 
+  {
     $filternames = array_keys($_filters);
+    $nbfilters = count($filternames);
+    $keys = array();    
+
+    foreach ($filternames as $filter) {
+      $value = $_filters[$filter];
+      $keys[] = $this->mapF2I($_res, $filter) . ":$value";
+    }
     
     switch ($nbfilters = count($filternames)) {
     case 1:
-      $filter = $filternames[0];
-      $value = $_filters[$filter];
-      $key = "idx:${_resource}" .$this->mapF2I($filter). ":${value}";
       self::log(LOG_DEBUG, __FILE__, __LINE__,
 		"will sMembers for key=$key");
-      return $this->redisConn->smembers($key);
+      return $this->redisConn->smembers($keys[0]);
       
     case 2:
-      $filter1 = $filternames[0];
-      $filter2 = $filternames[1];
-      $value1 = $_filters[$filter1];
-      $value2 = $_filters[$filter2];
-      $key1 = "idx:${_resource}" .$this->mapF2I($filter1). ":${value1}";
-      $key2 = "idx:${_resource}" .$this->mapF2I($filter2). ":${value2}";
       self::log(LOG_DEBUG, __FILE__, __LINE__,
-		"will sInter between key=$key1 and key=$key2");
-      return $this->redisConn->sInter($key1, $key2);
+		"will sInter between key=$keys[0] and key=$keys[1]");
+      return $this->redisConn->sInter($keys[0], $keys[1]);
       
     case 3:
-      $filter1 = $_filters[0];
-      $filter2 = $_filters[1];
-      $filter3 = $_filters[2];
-      $key1 = "idx:${_resource}By${filter1}";
-      $key2 = "idx:${_resource}By${filter2}";
-      $key3 = "idx:${_resource}By${filter3}";
       self::log(LOG_DEBUG, __FILE__, __LINE__,
-		"will sInter between key=$key1 and key=$key2 and key=$key3");
-      return $this->redisConn->sInter($key1, $key2, $key3);
+		"will sInter between key=$keys[0] and key=$keys[1] and key=$keys[2]");
+      return $this->redisConn->sInter($keys[0], $keys[1], $keys[2]);
       
     case 4:
-      $filter1 = $_filters[0];
-      $filter2 = $_filters[1];
-      $filter3 = $_filters[2];
-      $filter4 = $_filters[3];
-      $key1 = "idx:${_resource}By${filter1}";
-      $key2 = "idx:${_resource}By${filter2}";
-      $key3 = "idx:${_resource}By${filter3}";
-      $key4 = "idx:${_resource}By${filter4}";
       self::log(LOG_DEBUG, __FILE__, __LINE__,
-		"will sInter between key=$key1 and key=$key2 and key=$key3 and key=$key4");
-      return $this->redisConn->sInter($key1, $key2, $key3, $key4);
+		"will sInter between key=$keys[0] and key=$keys[1] and key=$keys[2] and key=$keys[3]");
+      return $this->redisConn->sInter($keys[0], $keys[1], $keys[2], $keys[3]);
       
     default:
       self::log(LOG_WARNING, __FILE__, __LINE__,

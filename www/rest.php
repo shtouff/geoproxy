@@ -19,7 +19,7 @@ function get() {
   $resource = $_GET['r'];
   $filters = array_diff($_GET, array('r' => $resource));
   
-  print_r($_GET);
+  print_r($resource);
   print_r($filters);
 
   $proxy = GeoProxy::singleton();
