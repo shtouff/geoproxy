@@ -6,13 +6,16 @@ require_once $incdir . '/GeoProxy.php';
 //header('Content-type: application/json');
 header('Content-type: text/plain');
 
+function parseRequest($_req)
+{
+  $result = array('resource' => '',
+		  'filters'  => array(),
+		  'ids'	     => 
+		  
+}
 
 function get() {
   // examiner $_GET
-  
-  //$proxy = GeoProxy::singleton();
-  
-  //GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__, "beurk");
   
   //print json_encode($proxy->geocodeData("paris", "fr"));
 
