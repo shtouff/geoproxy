@@ -192,6 +192,28 @@ class GeoProxy
     if (in_array('lang', $filternames) && in_array('query', $filternames)) {
       // lang & query => geocode
       $this->geocodeData($_filters['query'], $_filters['lang']);
+    } else if (in_array('serial', $filternames)) {
+      // serial => use reverse indirection to get gdatids back
+      $gdatids = array();
+      $serialset = $this->mapF2I('serial') .":". $_filters['serial'];
+      $geomids = $this->redisConn->sMembers($serialset);
+      
+      foreach ($geomids as $geomid) {
+	$tgdatids = array();
+	if (!in_array('lang', $filternames)) {
+	  $tgdatids = $this->redisConn->hVals("geom:$geomid:gdat");
+	} else {
+	  if ($tgdatid = $this->redisConn->hGet("geom:$geomid:gdat", 
+						$_filters['lang'])) {
+	    $tgdatids[] = $tgdatid;
+	  }
+	}
+	
+	foreach ($tgdatids as $tgdatid) {
+	  $gdatids[] = $tgdatid;
+	}
+      }
+      return $gdatids;
     } else if (in_array('lat', $filternames) && 
 	       in_array('lng', $filternames)) {
       
