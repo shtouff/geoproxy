@@ -1,4 +1,5 @@
 <h2><?php echo $gdat->formatted_address; ?></h2>
+<h3>gdatid: <?php echo $gdat->id; ?></h3>
 <h3>lang: <?php echo $gdat->lang; ?></h3>
 <h3>ext: <?php echo $gdat->ext; ?></h3>
 <h3>types: </h3>
@@ -13,6 +14,8 @@
 
 <h3>geometry: </h3>
 
+<li>geomid: <?php echo $gdat->geometry->id; ?>
+<li>serial: <?php echo $gdat->geometry->serial; ?>
 
 <li>location: <?php echo $gdat->geometry->location_type; ?>
 <ul>

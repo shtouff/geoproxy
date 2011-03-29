@@ -12,8 +12,6 @@ class Html extends CI_Controller {
     
     $filters = $this->uri->uri_to_assoc(3);
     
-    
-    
     $this->load->view('html/filter/header');
     
     $proxy = GeoProxy::singleton();

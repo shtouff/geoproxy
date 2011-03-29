@@ -12,10 +12,12 @@ class GeoGdat {
   public $types;
   public $ext;
   public $lang;
+  public $id;
   
   // private constructor since we don't want everyone creates 
   // this kind of object
   private function __construct() {
+    $this->id = -1;
   }
   
   public static function constructFromGoogle($_gdat, $_lang) {
@@ -94,6 +96,8 @@ class GeoGdat {
       $gdat->address_components[] = GeoGadc::constructFromRedis($_redis,
 								$gadcid);
     }
+    
+    $gdat->id = $_gdatid;
     
     return $gdat;
   }

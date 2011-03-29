@@ -10,15 +10,21 @@ class GeoGeom {
   public $viewport;
   public $bounds;
   
+  public $id;
+  public $serial;
+  
+  // cannot directly call constructor
   private function __construct() {
-    // cannot directly call constructor
+    $this->id = -1;
+    $this->serial = -1;
   }
   
   // builds a new object instance mapping a particular redis key
   public static function constructFromRedis($_redis, $_geomid) {
     
     $geom = new GeoGeom();
-    
+
+    $geom->serial = $_redis->get("geom:$_geomid:serial");
     $geom->location_type = $_redis->get("geom:$_geomid:loc:type");
     $geom->location = new GeoLocation($_redis->get("geom:$_geomid:loc:lat"),
 				      $_redis->get("geom:$_geomid:loc:lng"));
@@ -34,7 +40,9 @@ class GeoGeom {
     $ne = new GeoLocation($_redis->get("geom:$_geomid:bounds:ne:lat"),
 			  $_redis->get("geom:$_geomid:bounds:ne:lng"));
     $geom->bounds = new GeoBounds($sw, $ne);
-
+    
+    $geom->id = $_geomid;
+    
     return $geom;
   }
   
@@ -76,7 +84,7 @@ class GeoGeom {
   // computes a serial number for a geom
   public function computeSerial() {
     $md5 = md5(serialize($this));
-    GeoProxy::log(__FILE__, __LINE__,
+    GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
 		  "computed serial: $md5 \n");
     return $md5;
   }
