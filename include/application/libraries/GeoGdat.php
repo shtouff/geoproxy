@@ -37,27 +37,31 @@ class GeoGdat {
     return $gdat;
   }
   
+  // query must be urlencoded
   public static function indexInRedis($_redis, $_query, $_lang, $_gdatid) {
-    $hash = rawurlencode($_query);
+    //$hash = rawurlencode($_query);
     //$_redis->set("pk:gdatByQuery:$hash:$_lang", $_gdatid);
-    $_redis->sAdd("idx:gdatByQuery:$hash", $_gdatid);
+    $_redis->sAdd("idx:gdatByQuery:$_query", $_gdatid);
     $_redis->sAdd("idx:gdatByLang:$_lang", $_gdatid);
     GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
 		  "query [$_query] cached, with gdat:id=[$_gdatid]");
   }
   
   // va chercher chez google
+  // $_query must be url encoded
   public static function retrieveFromGoogle($_query, $_lang)
   {
     $url = sprintf('http://%s/maps/api/geocode/json?sensor=%s&address=%s&language=%s',
 		   'maps.google.com',
 		   'false',
-		   rawurlencode($_query),
+		   $_query,
 		   $_lang
 		   );
-    
     $json = file_get_contents($url);
     $google = json_decode($json);
+    
+    GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
+		  "asking google for: [". $_query ."]");
     
     switch ($google->status) {
       
@@ -105,6 +109,7 @@ class GeoGdat {
   // search if a gdat exists in redis
   // return gdat:id if it actually exists
   // return false else
+  // query must be urlencoded
   public static function existsInRedis($_redis, $_query, $_lang) {
     
     /* $pk = 'pk:gdatByQuery'; */
@@ -116,7 +121,7 @@ class GeoGdat {
     
     /* return $_redis->get($key); */
 
-    $key1 = 'idx:gdatByQuery:'. rawurlencode($_query); 
+    $key1 = 'idx:gdatByQuery:'. $_query; 
     $key2 = 'idx:gdatByLang:'. $_lang; 
 
     $result = $_redis->sInter($key1, $key2);    

@@ -11,6 +11,9 @@ class Html extends CI_Controller {
     require_once APPPATH . "/libraries/GeoProxy.php";
     
     $filters = $this->uri->uri_to_assoc(3);
+    foreach ($filters as $filter=>$value) {
+      $filters[$filter] = rawurldecode($value);
+    }
     
     $this->load->view('html/filter/header');
     

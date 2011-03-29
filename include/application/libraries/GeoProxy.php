@@ -118,6 +118,7 @@ class GeoProxy
     return GeoGdat::constructFromRedis($this->redisConn, $_id);
   }
   
+  // query must be urlencoded
   public function geocodeData($_query, $_lang)
   {
     if ($gdatid = GeoGdat::existsInRedis($this->redisConn, 
@@ -129,13 +130,14 @@ class GeoProxy
       return $gdat; 
     } else {
       $gdatGoogle = GeoGdat::retrieveFromGoogle($_query, $_lang);
+      print_r($gdatGoogle);
       $gdat = GeoGdat::constructFromGoogle($gdatGoogle, $_lang);
       
       self::log(__FILE__, __LINE__,
 		"gdat->fa = [$gdat->formatted_address]");
 
       if ($gdatid = GeoGdat::existsInRedis($this->redisConn,
-					   $gdat->formatted_address, 
+					   rawurlencode($gdat->formatted_address), 
 					   $_lang)) {
 	self::log(__FILE__, __LINE__,
 		  "found in redis with another key, will index this new key");
@@ -149,7 +151,8 @@ class GeoProxy
       }
       // now index this new key for this gdat
       GeoGdat::indexInRedis($this->redisConn, $_query, $_lang, $gdatid);
-      GeoGdat::indexInRedis($this->redisConn, $gdat->formatted_address, 
+      GeoGdat::indexInRedis($this->redisConn, 
+			    rawurlencode($gdat->formatted_address), 
 			    $_lang, $gdatid);
     }  
     return $gdat;
@@ -173,8 +176,6 @@ class GeoProxy
   private function mapR2I($_resource)
   {
     // maps resource name to redis index
-
-    
   }
 
   public function getGdatIDs($_filters) 
@@ -182,12 +183,18 @@ class GeoProxy
     $filternames = array_keys($_filters);
     $nbfilters = count($filternames);
     $keys = array();    
-
-    foreach ($filternames as $filter) {
-      $value = $_filters[$filter];
-      $keys[] = $this->mapF2I($filter) . ":$value";
+    
+    if (in_array('query', $filternames)) {
+      GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
+		    "received query filter with query=[".
+		    $_filters['query']. "]");
     }
-
+    
+    if (in_array('query', $filternames)) {
+      // encode query
+      $_filters['query'] =  rawurlencode($_filters['query']);
+    }
+    
     // special cases
     if (in_array('lang', $filternames) && in_array('query', $filternames)) {
       // lang & query => geocode
@@ -254,7 +261,12 @@ class GeoProxy
 	return $this->redisConn->sInter("tmp:$id", 
 					"idx:gdatByLang:".$_filters['lang']);
       }
-    } 
+    }
+
+    foreach ($filternames as $filter) {
+      $value = $_filters[$filter];
+      $keys[] = $this->mapF2I($filter) . ":$value";
+    }
     
     switch ($nbfilters = count($filternames)) {
     case 1:
@@ -263,9 +275,11 @@ class GeoProxy
       return $this->redisConn->smembers($keys[0]);
       
     case 2:
+      $result = $this->redisConn->sInter($keys[0], $keys[1]); 
       self::log(LOG_DEBUG, __FILE__, __LINE__,
-		"will sInter between key=$keys[0] and key=$keys[1]");
-      return $this->redisConn->sInter($keys[0], $keys[1]);
+		"sInter between key=$keys[0] and key=$keys[1]: ".
+		count($result) ." result(s)");
+      return $result;
       
     case 3:
       self::log(LOG_DEBUG, __FILE__, __LINE__,
