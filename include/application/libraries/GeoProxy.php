@@ -130,7 +130,10 @@ class GeoProxy
       return $gdat; 
     } else {
       $gdatGoogle = GeoGdat::retrieveFromGoogle($_query, $_lang);
-      print_r($gdatGoogle);
+      // XXX warning is:
+      // XXX several result returned
+      // XXX bounds is not defined in result (or whatever field in that case)
+      // XXX print_r($gdatGoogle);
       $gdat = GeoGdat::constructFromGoogle($gdatGoogle, $_lang);
       
       self::log(__FILE__, __LINE__,

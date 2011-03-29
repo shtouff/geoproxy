@@ -7,13 +7,16 @@
 <?php foreach ($gdat->types as $type):?> 
 <li><?php echo $type; ?></li>
 <?php endforeach;?>
-  <h3>addresse: </h3>
+<h3>address: </h3>
 <?php foreach ($gdat->address_components as $ad):?>
 <li><?php echo $ad->long_name ."[" .$ad->short_name ."]"; ?></li>
 <?php endforeach;?>
 
 <h3>geometry: </h3>
 
+<table>
+<tr>
+<td>
 <li>geomid: <?php echo $gdat->geometry->id; ?>
 <li>serial: <?php echo $gdat->geometry->serial; ?>
 
@@ -41,5 +44,10 @@
 <li>NE lng: <?php echo $gdat->geometry->bounds->northeast->lng; ?>
 </ul>
 </li>
-
+</td>
+<td>
+<img src="http://maps.google.com/maps/api/staticmap?center=<?php echo $gdat->geometry->location->lat; ?>,<?php echo $gdat->geometry->location->lng; ?>&visible=<?php echo $gdat->geometry->viewport->southwest->lat; ?>,<?php echo $gdat->geometry->viewport->southwest->lng; ?>%7C<?php echo $gdat->geometry->viewport->northeast->lat; ?>,<?php echo $gdat->geometry->viewport->northeast->lng; ?>&size=640x480&maptype=roadmap&sensor=false"/>
+</td>
+</tr>
+</table>
 <hr/>
