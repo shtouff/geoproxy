@@ -27,7 +27,7 @@ class Html extends CI_Controller {
   // create a new gdat
   public function create() 
   {
-
+    
   }
 
   // modifies an existing gdat
