@@ -39,15 +39,13 @@ class GeoGdat {
   
   // query must be urlencoded
   public static function indexInRedis($_redis, $_query, $_lang, $_gdatid) {
-    //$hash = rawurlencode($_query);
-    //$_redis->set("pk:gdatByQuery:$hash:$_lang", $_gdatid);
     $_redis->sAdd("idx:gdatByQuery:$_query", $_gdatid);
     $_redis->sAdd("idx:gdatByLang:$_lang", $_gdatid);
     GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
 		  "query [$_query] cached, with gdat:id=[$_gdatid]");
   }
   
-  // va chercher chez google
+  // va chercher chez google, et renvoie un array de resultats
   // $_query must be url encoded
   public static function retrieveFromGoogle($_query, $_lang)
   {
@@ -72,13 +70,13 @@ class GeoGdat {
 	GeoProxy::log(__FILE__, __LINE__,
 		      "more than 1 result found, using only the first");
       }
-      return $google->results[0];
+      return $google->results;
       
     default:
       GeoProxy::log(__FILE__, __LINE__,
 		    "unknown status: " . $_data->status);
     }
-    return false;
+    return ($result = array());
   }
   
   public static function constructFromRedis($_redis, $_gdatid) {
@@ -110,17 +108,8 @@ class GeoGdat {
   // return gdat:id if it actually exists
   // return false else
   // query must be urlencoded
-  public static function existsInRedis($_redis, $_query, $_lang) {
-    
-    /* $pk = 'pk:gdatByQuery'; */
-    /* $key = $pk .':'. rawurlencode($_query) .':'. $_lang; */
-    
-    /* if (!$_redis->exists($key)) { */
-    /*   return false; */
-    /* } */
-    
-    /* return $_redis->get($key); */
-
+  public static function existsInRedis($_redis, $_query, $_lang) 
+  {
     $key1 = 'idx:gdatByQuery:'. $_query; 
     $key2 = 'idx:gdatByLang:'. $_lang; 
 

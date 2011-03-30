@@ -88,14 +88,17 @@ class GeoProxy
   
   public function reverseGeocodeData($_lat, $_lng, $_lang)
   {
+    $gdatids = array();
+
     if ($geomid = GeoGeom::intersectInRedis($this->redisConn, $_lat, $_lng)) {
       // found a geom in redis matching these coordinates
       $geom = GeoGeom::constructFromRedis($this->redisConn, $geomid);
       
       // will try to get back the gdat for this $_lang
       if ($gdatid = $this->redisConn->hGet("geom:$geomid:gdat", $_lang)) {
-	$gdat = GeoGdat::constructFromRedis($this->redisConn, $gdatid);
-	return $gdat;
+	//$gdat = GeoGdat::constructFromRedis($this->redisConn, $gdatid);
+	$gdatids[] = $gdatid;
+	return $gdatids;
       } else {
 	// no entry for lang=$_lang in hash geom:$geomid:gdat
 	// will try with another lang
@@ -106,11 +109,12 @@ class GeoProxy
 	  $gdat = GeoGdat::constructFromRedis($this->redisConn, $gdatid);
 	  
 	  // geocode for this missing language
-	  return $this->geocodeData($gdat->formatted_address, $_lang);
+	  return $this->geocodeData(rawurlencode($gdat->formatted_address),
+				    $_lang);
 	}
       }
     }
-    return false;
+    return ($result = array());
   }
 
   public function getGdat($_id)
@@ -118,47 +122,49 @@ class GeoProxy
     return GeoGdat::constructFromRedis($this->redisConn, $_id);
   }
   
+  // returns an array of gdatids matching this query with this lang
   // query must be urlencoded
   public function geocodeData($_query, $_lang)
   {
+    $gdatids = array();
+    
     if ($gdatid = GeoGdat::existsInRedis($this->redisConn, 
 					 $_query, $_lang)) {
       self::log(__FILE__, __LINE__,
 		"data found in redis");
-      $gdat = GeoGdat::constructFromRedis($this->redisConn,
-					  $gdatid);
-      return $gdat; 
+      $gdatids[] = $gdatid;
     } else {
-      $gdatGoogle = GeoGdat::retrieveFromGoogle($_query, $_lang);
-      // XXX warning is:
-      // XXX several result returned
-      // XXX bounds is not defined in result (or whatever field in that case)
-      // XXX print_r($gdatGoogle);
-      $gdat = GeoGdat::constructFromGoogle($gdatGoogle, $_lang);
-      
-      self::log(__FILE__, __LINE__,
-		"gdat->fa = [$gdat->formatted_address]");
-
-      if ($gdatid = GeoGdat::existsInRedis($this->redisConn,
-					   rawurlencode($gdat->formatted_address), 
-					   $_lang)) {
-	self::log(__FILE__, __LINE__,
-		  "found in redis with another key, will index this new key");
+      $providerGdats = GeoGdat::retrieveFromGoogle($_query, $_lang);
+      $gdatids = array();
+      foreach ($providerGdats as $providerGdat) {
+	$gdat = GeoGdat::constructFromGoogle($providerGdat, $_lang);
 	
-	$gdat = GeoGdat::constructFromRedis($this->redisConn, $gdatid);
-      } else {
-	// really don't exist in Redis, have to store it !
 	self::log(__FILE__, __LINE__,
-		  "not found in redis, found in google, will store this new gdat");
-	$gdatid = $gdat->storeInRedis($this->redisConn);
+		  "gdat->fa = [$gdat->formatted_address]");
+	
+	if ($gdatid = GeoGdat::existsInRedis($this->redisConn,
+					     rawurlencode($gdat->formatted_address), 
+					     $_lang)) {
+	  self::log(__FILE__, __LINE__,
+		    "found in redis with another key, will index this new key");
+	  
+	  $gdat = GeoGdat::constructFromRedis($this->redisConn, $gdatid);
+	  $gdatids[] = $gdatid;
+	} else {
+	  // really don't exist in Redis, have to store it !
+	  self::log(__FILE__, __LINE__,
+		    "not found in redis, found in google, will store this new gdat");
+	  $gdatid = $gdat->storeInRedis($this->redisConn);
+	  $gdatids[] = $gdatid;
+	}
+	// now index this new key for this gdat
+	GeoGdat::indexInRedis($this->redisConn, $_query, $_lang, $gdatid);
+	GeoGdat::indexInRedis($this->redisConn, 
+			      rawurlencode($gdat->formatted_address), 
+			      $_lang, $gdatid);
       }
-      // now index this new key for this gdat
-      GeoGdat::indexInRedis($this->redisConn, $_query, $_lang, $gdatid);
-      GeoGdat::indexInRedis($this->redisConn, 
-			    rawurlencode($gdat->formatted_address), 
-			    $_lang, $gdatid);
-    }  
-    return $gdat;
+    }
+    return $gdatids;
   }
   
   private function mapF2I($_filter)
@@ -201,7 +207,7 @@ class GeoProxy
     // special cases
     if (in_array('lang', $filternames) && in_array('query', $filternames)) {
       // lang & query => geocode
-      $this->geocodeData($_filters['query'], $_filters['lang']);
+      return ($this->geocodeData($_filters['query'], $_filters['lang']));
     } else if (in_array('serial', $filternames)) {
       // serial => use reverse indirection to get gdatids back
       $gdatids = array();
@@ -239,7 +245,7 @@ class GeoProxy
 	  $gdatids[] = $tgdatid;
 	}
       }
-
+      
       if (!in_array('lang', $filternames)) {
 	return $gdatids;
       } else {

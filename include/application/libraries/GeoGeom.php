@@ -50,6 +50,10 @@ class GeoGeom {
   public static function constructFromGoogle($_geom) {
     
     $geom = new GeoGeom();
+    $reflected = new ReflectionObject($_geom);
+    
+    GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
+		  print_r($_geom, true));
 
     $geom->location_type = $_geom->location_type;
     $geom->location = new GeoLocation($_geom->location->lat,
@@ -60,13 +64,15 @@ class GeoGeom {
     $ne = new GeoLocation($_geom->viewport->northeast->lat,
 			  $_geom->viewport->northeast->lng);
     $geom->viewport = new GeoBounds($sw, $ne);
-
-    $sw = new GeoLocation($_geom->bounds->southwest->lat,
-			  $_geom->bounds->southwest->lng);
-    $ne = new GeoLocation($_geom->bounds->northeast->lat,
-			  $_geom->bounds->northeast->lng);
-    $geom->bounds = new GeoBounds($sw, $ne);
     
+    
+    if ($reflected->hasProperty("bounds") && is_object($_geom->bounds)) {
+      $sw = new GeoLocation($_geom->bounds->southwest->lat,
+			    $_geom->bounds->southwest->lng);
+      $ne = new GeoLocation($_geom->bounds->northeast->lat,
+			    $_geom->bounds->northeast->lng);
+      $geom->bounds = new GeoBounds($sw, $ne);
+    }
     return $geom;
   }
 
@@ -137,11 +143,13 @@ class GeoGeom {
     $_redis->set("geom:$id:vport:ne:lat", $this->viewport->northeast->lat); 
     $_redis->set("geom:$id:vport:ne:lng", $this->viewport->northeast->lng); 
 
-    $_redis->set("geom:$id:bounds:sw:lat", $this->bounds->southwest->lat); 
-    $_redis->set("geom:$id:bounds:sw:lng", $this->bounds->southwest->lng); 
-    $_redis->set("geom:$id:bounds:ne:lat", $this->bounds->northeast->lat); 
-    $_redis->set("geom:$id:bounds:ne:lng", $this->bounds->northeast->lng);
-
+    if (is_object($this->bounds)) {
+      $_redis->set("geom:$id:bounds:sw:lat", $this->bounds->southwest->lat); 
+      $_redis->set("geom:$id:bounds:sw:lng", $this->bounds->southwest->lng); 
+      $_redis->set("geom:$id:bounds:ne:lat", $this->bounds->northeast->lat); 
+      $_redis->set("geom:$id:bounds:ne:lng", $this->bounds->northeast->lng);
+    }
+    
     // update indexes
     $lat = $this->location->lat;
     $lng = $this->location->lng;
