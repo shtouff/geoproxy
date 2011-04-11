@@ -56,7 +56,14 @@ class GeoGdat {
 		               $_query,
 		               $_lang
 		               );
-
+		
+		if (GOOGLE_MAPS_SIGN) {
+			$url .= ("&client=" . GOOGLE_MAPS_ID);
+			$url = GeoProxy::signUrl($url, GOOGLE_MAPS_KEY);
+			GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
+		              "url signing requested, url is now: [". $url ."]");
+		}
+		
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); 
 		curl_setopt($ch, CURLOPT_URL, $url);
@@ -65,7 +72,6 @@ class GeoGdat {
 
 		$json = curl_exec($ch);
 		$google = json_decode($json);
-		
 		
 		GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
 		              "asking google for: [". $_query ."]");
@@ -79,12 +85,20 @@ class GeoGdat {
 				GeoProxy::log(__FILE__, __LINE__,
 				              "more than 1 result found, using only the first");
 			}
+			curl_close($ch);
 			return $google->results;
 			
+		case "OVER_QUERY_LIMIT":
+			GeoProxy::log(LOG_CRIT, __FILE__, __LINE__,
+			              "OVER_QUERY_LIMIT reached !"
+			              );
+			break;
 		default:
 			GeoProxy::log(__FILE__, __LINE__,
-			              "unknown status: " . $_data->status);
+			              "unknown status: " . $google->status .
+			              " HTTP error: " . curl_errno($ch));
 		}
+		curl_close($ch);
 		return ($result = array());
 	}
 	

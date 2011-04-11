@@ -75,13 +75,13 @@ class GeoProxy
     $urlPartToSign = $url['path'] . "?" . $url['query'];
     
     // Decode the private key into its binary format
-    $decodedKey = decodeBase64UrlSafe($privateKey);
+    $decodedKey = self::decodeBase64UrlSafe($privateKey);
     
     // Create a signature using the private key and the URL-encoded
     // string using HMAC SHA1. This signature will be binary.
-    $signature = hash_hmac("sha1",$urlPartToSign, $decodedKey,  true);
+    $signature = hash_hmac("sha1", $urlPartToSign, $decodedKey,  true);
     
-    $encodedSignature = encodeBase64UrlSafe($signature);
+    $encodedSignature = self::encodeBase64UrlSafe($signature);
     
     return $myUrlToSign."&signature=".$encodedSignature;
   }
