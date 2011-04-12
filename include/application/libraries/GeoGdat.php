@@ -49,6 +49,9 @@ class GeoGdat {
 	// $_query must be url encoded
 	public static function retrieveFromGoogle($_query, $_lang)
 	{
+		GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
+		              "asking google for: [". $_query ."]");
+		
 		$headers = array("Host: maps.google.com");
 		$url = sprintf('http://%s/maps/api/geocode/json?sensor=%s&address=%s&language=%s',
 		               'comtools3:6080',
@@ -61,7 +64,7 @@ class GeoGdat {
 			$url .= ("&client=" . GOOGLE_MAPS_ID);
 			$url = GeoProxy::signUrl($url, GOOGLE_MAPS_KEY);
 			GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
-		              "url signing requested, url is now: [". $url ."]");
+			              "url signing requested, url is now: [". $url ."]");
 		}
 		
 		$ch = curl_init();
@@ -70,12 +73,14 @@ class GeoGdat {
 		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
-		$json = curl_exec($ch);
+		if (! $json = curl_exec($ch)) {
+			GeoProxy::log(LOG_CRIT, __FILE__, __LINE__,
+			              "Curl error: " . curl_errno($ch));
+			curl_close($ch);
+			return ($result = array());
+		}
 		$google = json_decode($json);
-		
-		GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
-		              "asking google for: [". $_query ."]");
-		
+				
 		switch ($google->status) {
 			
 		case "OK":
@@ -94,9 +99,8 @@ class GeoGdat {
 			              );
 			break;
 		default:
-			GeoProxy::log(__FILE__, __LINE__,
-			              "unknown status: " . $google->status .
-			              " HTTP error: " . curl_errno($ch));
+			GeoProxy::log(LOG_WARNING, __FILE__, __LINE__,
+			              "Google unknown status: " . $google->status);
 		}
 		curl_close($ch);
 		return ($result = array());
