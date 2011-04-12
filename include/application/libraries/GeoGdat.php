@@ -98,6 +98,13 @@ class GeoGdat {
 			              "OVER_QUERY_LIMIT reached !"
 			              );
 			break;
+
+		case "ZERO_RESULTS":
+			GeoProxy::log(LOG_WARNING, __FILE__, __LINE__,
+			              "ZERO_RESULTS found !"
+			              );
+			break;
+			
 		default:
 			GeoProxy::log(LOG_WARNING, __FILE__, __LINE__,
 			              "Google unknown status: " . $google->status);
