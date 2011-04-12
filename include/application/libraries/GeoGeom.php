@@ -52,9 +52,6 @@ class GeoGeom {
     $geom = new GeoGeom();
     $reflected = new ReflectionObject($_geom);
     
-    GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
-		  print_r($_geom, true));
-
     $geom->location_type = $_geom->location_type;
     $geom->location = new GeoLocation($_geom->location->lat,
 				      $_geom->location->lng);
