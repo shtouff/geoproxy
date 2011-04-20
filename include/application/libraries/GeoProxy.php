@@ -88,35 +88,35 @@ class GeoProxy
   
   public function reverseGeocodeData($_lat, $_lng, $_lang)
   {
-    $gdatids = array();
-
-    if ($geomid = GeoGeom::intersectInRedis($this->redisConn, $_lat, $_lng)) {
-      // found a geom in redis matching these coordinates
+	  $gdatids = array();
+	  
+	  if ($geomid = GeoGeom::intersectInRedis($this->redisConn, $_lat, $_lng)) {
+		  // found a geom in redis matching these coordinates
       $geom = GeoGeom::constructFromRedis($this->redisConn, $geomid);
       
       // will try to get back the gdat for this $_lang
       if ($gdatid = $this->redisConn->hGet("geom:$geomid:gdat", $_lang)) {
-	//$gdat = GeoGdat::constructFromRedis($this->redisConn, $gdatid);
-	$gdatids[] = $gdatid;
-	return $gdatids;
+	      //$gdat = GeoGdat::constructFromRedis($this->redisConn, $gdatid);
+	      $gdatids[] = $gdatid;
+	      return $gdatids;
       } else {
-	// no entry for lang=$_lang in hash geom:$geomid:gdat
-	// will try with another lang
-	
-	$avail_gdats = $this->redisConn->hVals("geom:$geomid:gdat");
-	if (count($avail_gdats) >= 1) {
-	  $gdatid = $avail_gdats[0];
-	  $gdat = GeoGdat::constructFromRedis($this->redisConn, $gdatid);
-	  
-	  // geocode for this missing language
-	  return $this->geocodeData(rawurlencode($gdat->formatted_address),
-				    $_lang);
-	}
+	      // no entry for lang=$_lang in hash geom:$geomid:gdat
+	      // will try with another lang
+	      
+	      $avail_gdats = $this->redisConn->hVals("geom:$geomid:gdat");
+	      if (count($avail_gdats) >= 1) {
+		      $gdatid = $avail_gdats[0];
+		      $gdat = GeoGdat::constructFromRedis($this->redisConn, $gdatid);
+		      
+		      // geocode for this missing language
+		      return $this->geocodeData(rawurlencode($gdat->formatted_address),
+		                                $_lang);
+	      }
       }
-    }
-    return ($result = array());
+	  }
+	  return ($result = array());
   }
-
+  
   public function getGdat($_id)
   {
     return GeoGdat::constructFromRedis($this->redisConn, $_id);
@@ -126,65 +126,93 @@ class GeoProxy
   // query must be urlencoded
   public function geocodeData($_query, $_lang)
   {
-    $gdatids = array();
-    
-    if ($gdatid = GeoGdat::existsInRedis($this->redisConn, 
-					 $_query, $_lang)) {
-      self::log(__FILE__, __LINE__,
-		"data found in redis");
-      $gdatids[] = $gdatid;
-    } else {
-      $providerGdats = GeoGdat::retrieveFromGoogle($_query, $_lang);
-      $gdatids = array();
-      foreach ($providerGdats as $providerGdat) {
-	$gdat = GeoGdat::constructFromGoogle($providerGdat, $_lang);
-	
-	self::log(__FILE__, __LINE__,
-		  "gdat->fa = [$gdat->formatted_address]");
-	
-	if ($gdatid = GeoGdat::existsInRedis($this->redisConn,
-					     rawurlencode($gdat->formatted_address), 
-					     $_lang)) {
-	  self::log(__FILE__, __LINE__,
-		    "found in redis with another key, will index this new key");
+	  $gdatids = array();
 	  
-	  $gdat = GeoGdat::constructFromRedis($this->redisConn, $gdatid);
-	  $gdatids[] = $gdatid;
-	} else {
-	  // really don't exist in Redis, have to store it !
-	  self::log(__FILE__, __LINE__,
-		    "not found in redis, found in google, will store this new gdat");
-	  $gdatid = $gdat->storeInRedis($this->redisConn);
-	  $gdatids[] = $gdatid;
-	}
-	// now index this new key for this gdat
-	GeoGdat::indexInRedis($this->redisConn, $_query, $_lang, $gdatid);
-	GeoGdat::indexInRedis($this->redisConn, 
-			      rawurlencode($gdat->formatted_address), 
-			      $_lang, $gdatid);
-      }
-    }
-    return $gdatids;
+	  if ($tgdatids = GeoGdat::existsInRedis($this->redisConn, 
+	                                         $_query, $_lang)) {
+
+		  // premier cas, les données sont déja dans redis
+		  self::log(LOG_NOTICE, __CLASS__, __FUNCTION__,
+		            "data found in redis");
+
+		  foreach ($tgdatids as $gdatid) {
+			  $gdatids[] = $gdatid;
+		  }
+	  } else {
+
+		  // deuxième cas, les données ne sont pas dans redis
+		  
+		  // on tape dans google
+		  $providerGdats = GeoGdat::retrieveFromGoogle($_query, $_lang);
+		  foreach ($providerGdats as $providerGdat) {
+			  // pour chaque resultat google, on cree un objet, 
+			  $gdat = GeoGdat::constructFromGoogle($providerGdat, $_lang);
+			  
+			  self::log(LOG_NOTICE, __CLASS__, __FUNCTION__,
+			            "gdat->fa = [$gdat->formatted_address]");
+			  
+			  // s'il existe déja des données dans redis correspondant à la formatted address 
+			  // de l'objet créé, alors on ne stocke pas ce nouvel objet, mais on indexe les donnees
+			  // existentes avec cette nouvelle query
+			  if ($tgdatids = GeoGdat::existsInRedis($this->redisConn,
+			                                         rawurlencode($gdat->formatted_address), 
+			                                         $_lang)) {
+				  self::log(LOG_NOTICE, __CLASS__, __FUNCTION__,
+				            "found data in redis with another key, will index this new key");
+				  
+				  // XXX redis sadd index:gdatByQuery:$query $id
+				  foreach ($tgdatids as $id) {
+					  GeoGdat::indexInRedis($this->redisConn, $_query, $id);
+					  $gdatids[] = $id;
+				  }
+			  } else {
+				  // les données n'existent vraiment pas dans redis, il faut socker ce nouvel objet
+				  self::log(LOG_NOTICE, __CLASS__, __FUNCTION__,
+				            "not found in redis, found in google, will store this new gdat");
+				  $gdatid = $gdat->storeInRedis($this->redisConn);
+				  $gdatids[] = $gdatid;
+				  
+				  // now index this new key for this gdat
+				  GeoGdat::indexInRedis($this->redisConn, $_query, $gdatid);
+				  GeoGdat::indexInRedis($this->redisConn, 
+				                        rawurlencode($gdat->formatted_address),
+				                        $gdatid);
+			  }
+		  }
+	  }
+	  return $gdatids;
   }
   
   private function mapF2I($_filter)
   {
     // maps filter name to redis index
     $map = array("lang"		=> "idx:gdatByLang",
-		 "ext"		=> "idx:gdatByExt",
-		 "lat"		=> "idx:geomByLat",
-		 "lng"		=> "idx:geomByLng",
-		 "type"		=> "idx:gdatByType",
-		 "serial"	=> "idx:geomBySerial",
-		 "query"	=> "idx:gdatByQuery",
-		 );
-
+                 "ext"		=> "idx:gdatByExt",
+                 "lat"		=> "idx:geomByLat",
+                 "lng"		=> "idx:geomByLng",
+                 "type"		=> "idx:gdatByType",
+                 "serial"	=> "idx:geomBySerial",
+                 "query"	=> "idx:gdatByQuery",
+                 );
+    
     return $map["$_filter"];
   }
   
-  private function mapR2I($_resource)
+  public function createGdat($_data) 
   {
-    // maps resource name to redis index
+	  $gdat = GeoGdat::constructFromArray($_data);
+	  $gdatid = $gdat->storeInRedis($this->redisConn);
+	  GeoGdat::indexInRedis($this->redisConn,
+	                        rawurlencode($gdat->formatted_address),
+	                        $gdatid);
+	  
+	  return $gdatid;
+  }
+  
+  public function deleteGdat($_gdatid)
+  {
+	  $gdat = GeoGdat::constructFromRedis($this->redisConn, $g_gdatid);
+	  $gdat->deleteFromRedis($this->redisConn);
   }
 
   public function getGdatIDs($_filters) 
@@ -194,9 +222,9 @@ class GeoProxy
     $keys = array();    
     
     if (in_array('query', $filternames)) {
-      GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
-		    "received query filter with query=[".
-		    $_filters['query']. "]");
+	    GeoProxy::log(LOG_DEBUG, __CLASS__, __FUNCTION__,
+	                  "received query filter with query=[".
+	                  $_filters['query']. "]");
     }
     
     if (in_array('query', $filternames)) {
@@ -215,152 +243,152 @@ class GeoProxy
       $geomids = $this->redisConn->sMembers($serialset);
       
       foreach ($geomids as $geomid) {
-	$tgdatids = array();
-	if (!in_array('lang', $filternames)) {
-	  $tgdatids = $this->redisConn->hVals("geom:$geomid:gdat");
-	} else {
-	  if ($tgdatid = $this->redisConn->hGet("geom:$geomid:gdat", 
-						$_filters['lang'])) {
-	    $tgdatids[] = $tgdatid;
-	  }
-	}
-	
-	foreach ($tgdatids as $tgdatid) {
-	  $gdatids[] = $tgdatid;
-	}
+	      $tgdatids = array();
+	      if (!in_array('lang', $filternames)) {
+		      $tgdatids = $this->redisConn->hVals("geom:$geomid:gdat");
+	      } else {
+		      if ($tgdatid = $this->redisConn->hGet("geom:$geomid:gdat", 
+		                                            $_filters['lang'])) {
+			      $tgdatids[] = $tgdatid;
+		      }
+	      }
+	      
+	      foreach ($tgdatids as $tgdatid) {
+		      $gdatids[] = $tgdatid;
+	      }
       }
       return $gdatids;
     } else if (in_array('lat', $filternames) && 
-	       in_array('lng', $filternames)) {
-      
-      // lat & lng => reversegeocode
-      
-      $gdatids = array();
-      $latset = $this->mapF2I('lat') .":". $_filters['lat'];
-      $lngset = $this->mapF2I('lng') .":". $_filters['lng'];
-      $geomids = $this->redisConn->sInter($latset, $lngset);
-      foreach ($geomids as $geomid) {
-	$tgdatids = $this->redisConn->hVals("geom:$geomid:gdat");
-	foreach ($tgdatids as $tgdatid) {
-	  $gdatids[] = $tgdatid;
+               in_array('lng', $filternames)) {
+	    
+	    // lat & lng => reversegeocode
+	    
+	    $gdatids = array();
+	    $latset = $this->mapF2I('lat') .":". $_filters['lat'];
+	    $lngset = $this->mapF2I('lng') .":". $_filters['lng'];
+	    $geomids = $this->redisConn->sInter($latset, $lngset);
+	    foreach ($geomids as $geomid) {
+		    $tgdatids = $this->redisConn->hVals("geom:$geomid:gdat");
+		    foreach ($tgdatids as $tgdatid) {
+			    $gdatids[] = $tgdatid;
 	}
-      }
-      
-      if (!in_array('lang', $filternames)) {
-	return $gdatids;
-      } else {
-	$this->reverseGeocodeData($_filters['lat'], $_filters['lng'],
-				  $_filters['lang']);
-	
-	foreach ($geomids as $geomid) {
-	  $tgdatids = $this->redisConn->hVals("geom:$geomid:gdat");
-	  foreach ($tgdatids as $tgdatid) {
-	    $gdatids[] = $tgdatid;
-	  }
-	}
-	
-	// build a temp set, in order to intersect it with lang
-	
-	$id = $this->redisConn->incr('next:tmp:id');
-	foreach ($gdatids as $gdatid) {
-	  $this->redisConn->sAdd("tmp:$id", $gdatid);
-	}
-	
-	$this->redisConn->expire("tmp:$id", 30);
-	return $this->redisConn->sInter("tmp:$id", 
+	    }
+	    
+	    if (!in_array('lang', $filternames)) {
+		    return $gdatids;
+	    } else {
+		    $this->reverseGeocodeData($_filters['lat'], $_filters['lng'],
+		                              $_filters['lang']);
+		    
+		    foreach ($geomids as $geomid) {
+			    $tgdatids = $this->redisConn->hVals("geom:$geomid:gdat");
+			    foreach ($tgdatids as $tgdatid) {
+				    $gdatids[] = $tgdatid;
+			    }
+		    }
+		    
+		    // build a temp set, in order to intersect it with lang
+		    
+		    $id = $this->redisConn->incr('next:tmp:id');
+		    foreach ($gdatids as $gdatid) {
+			    $this->redisConn->sAdd("tmp:$id", $gdatid);
+		    }
+		    
+		    $this->redisConn->expire("tmp:$id", 30);
+		    return $this->redisConn->sInter("tmp:$id", 
 					"idx:gdatByLang:".$_filters['lang']);
-      }
+	    }
     }
-
+    
     foreach ($filternames as $filter) {
-      $value = $_filters[$filter];
-      $keys[] = $this->mapF2I($filter) . ":$value";
+	    $value = $_filters[$filter];
+	    $keys[] = $this->mapF2I($filter) . ":$value";
     }
     
     switch ($nbfilters = count($filternames)) {
     case 1:
-      self::log(LOG_DEBUG, __FILE__, __LINE__,
+	    self::log(LOG_DEBUG, __FILE__, __LINE__,
 		"will sMembers for key=$keys[0]");
-      return $this->redisConn->smembers($keys[0]);
-      
+	    return $this->redisConn->smembers($keys[0]);
+	    
     case 2:
-      $result = $this->redisConn->sInter($keys[0], $keys[1]); 
-      self::log(LOG_DEBUG, __FILE__, __LINE__,
-		"sInter between key=$keys[0] and key=$keys[1]: ".
-		count($result) ." result(s)");
-      return $result;
-      
+	    $result = $this->redisConn->sInter($keys[0], $keys[1]); 
+	    self::log(LOG_DEBUG, __FILE__, __LINE__,
+	              "sInter between key=$keys[0] and key=$keys[1]: ".
+	              count($result) ." result(s)");
+	    return $result;
+	    
     case 3:
-      self::log(LOG_DEBUG, __FILE__, __LINE__,
-		"will sInter between key=$keys[0] and key=$keys[1] and key=$keys[2]");
-      return $this->redisConn->sInter($keys[0], $keys[1], $keys[2]);
-      
+	    self::log(LOG_DEBUG, __FILE__, __LINE__,
+	              "will sInter between key=$keys[0] and key=$keys[1] and key=$keys[2]");
+	    return $this->redisConn->sInter($keys[0], $keys[1], $keys[2]);
+	    
     case 4:
-      self::log(LOG_DEBUG, __FILE__, __LINE__,
-		"will sInter between key=$keys[0] and key=$keys[1] and key=$keys[2] and key=$keys[3]");
-      return $this->redisConn->sInter($keys[0], $keys[1], $keys[2], $keys[3]);
-      
+	    self::log(LOG_DEBUG, __FILE__, __LINE__,
+	              "will sInter between key=$keys[0] and key=$keys[1] and key=$keys[2] and key=$keys[3]");
+	    return $this->redisConn->sInter($keys[0], $keys[1], $keys[2], $keys[3]);
+	    
     default:
-      self::log(LOG_WARNING, __FILE__, __LINE__,
-		"this number of filters ($nbfilters) is not supported");
+	    self::log(LOG_WARNING, __FILE__, __LINE__,
+	              "this number of filters ($nbfilters) is not supported");
     }
-
+    
     return $ret = array();
   }
   
-
+  
   public static function log()
   {
-    switch (func_num_args()) {
-    case 1:
-      $level = LOG_INFO;
-      $msg = func_get_arg(0);
-      break;
+	  switch (func_num_args()) {
+	  case 1:
+		  $level = LOG_INFO;
+		  $msg = func_get_arg(0);
+		  break;
+		  
+	  case 2:
+		  $level = func_get_arg(0);
+		  $msg = func_get_arg(1);
+		  break;
       
-    case 2:
-      $level = func_get_arg(0);
-      $msg = func_get_arg(1);
-      break;
-      
-    case 3:
-      $level = LOG_INFO;
-      $msg = sprintf("%s:%s %s\n", func_get_arg(0), 
-		     func_get_arg(1), func_get_arg(2));
-      break;
-	
-    case 4:
-      $level = func_get_arg(0);
-      $msg = sprintf("%s:%s %s\n", func_get_arg(1), 
-		     func_get_arg(2), func_get_arg(3));
-      break;
-      
-    default:
-      error_log(self."::".__FUNCTION__.": wrong number of args");
-    }
+	  case 3:
+		  $level = LOG_INFO;
+		  $msg = sprintf("%s:%s %s\n", func_get_arg(0), 
+		                 func_get_arg(1), func_get_arg(2));
+		  break;
+		  
+	  case 4:
+		  $level = func_get_arg(0);
+		  $msg = sprintf("%s:%s %s\n", func_get_arg(1), 
+		                 func_get_arg(2), func_get_arg(3));
+		  break;
+		  
+	  default:
+		  error_log(self."::".__FUNCTION__.": wrong number of args");
+	  }
+	  
+	  if (!defined('CFG_LOGLEVEL')) {
+		  define('CFG_LOGLEVEL', LOG_INFO);
+	  }
+	  
+	  if ($level > CFG_LOGLEVEL)
+		  return;
     
-    if (!defined('CFG_LOGLEVEL')) {
-      define('CFG_LOGLEVEL', LOG_INFO);
-    }
-    
-    if ($level > CFG_LOGLEVEL)
-      return;
-    
-    if (defined('CFG_LOGFACILITY')) {
-      openlog("geoproxy", LOG_PID, CFG_LOGFACILITY);
-      syslog($level, $msg);
-      closelog();
-    } else {
-      error_log($_msg);
-    }
+	  if (defined('CFG_LOGFACILITY')) {
+		  openlog("geoproxy", LOG_PID, CFG_LOGFACILITY);
+		  syslog($level, $msg);
+		  closelog();
+	  } else {
+		  error_log($_msg);
+	  }
   }
-
+  
   function getLocalitiesByName($query) 
   {
-    // renvoie une liste de labels de ville commencant par $query > 3 chars
-    // recherche uniquement dans le cache redis
-    // peut être utilisé en Ajax pour obtenir une liste
-    
-    // hash list de 5
+	  // renvoie une liste de labels de ville commencant par $query > 3 chars
+	  // recherche uniquement dans le cache redis
+	  // peut être utilisé en Ajax pour obtenir une liste
+	  
+	  // hash list de 5
     
     //$this->redisConnection->sMembers 
     $result = array();
@@ -388,18 +416,18 @@ class GeoProxy
       
       $locality = $country = "";
       foreach ($gdat->address_components as $gadc) {
-	if ( array_search("locality", $gadc->types)) {
-	  $locality = $gadc->lname;
-	} 
-
-	if ( array_search("country", $gadc->types)) {
-	  $country = $gadc->lname;
-	}
+	      if ( array_search("locality", $gadc->types)) {
+		      $locality = $gadc->lname;
+	      } 
+	      
+	      if ( array_search("country", $gadc->types)) {
+		      $country = $gadc->lname;
+	      }
       }
       
       if (! empty($locality) && ! empty($country)) {
-	// index
-	$prefix = substr();
+	      // index
+	      $prefix = substr();
       }
     }
   }

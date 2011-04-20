@@ -1,3 +1,4 @@
+<div class="view">
 <h2><?php echo $gdat->formatted_address; ?></h2>
 <h3>gdatid: <?php echo $gdat->id; ?></h3>
 <h3>lang: <?php echo $gdat->lang; ?></h3>
@@ -50,4 +51,5 @@
 </td>
 </tr>
 </table>
+</div>
 <hr/>

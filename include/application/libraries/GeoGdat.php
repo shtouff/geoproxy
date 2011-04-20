@@ -18,11 +18,13 @@ class GeoGdat {
 	// this kind of object
 	private function __construct() {
 		$this->id = -1;
+		GeoProxy::log(LOG_DEBUG, __CLASS__, __FUNCTION__, 
+		              "leaving (id = ".$this->id.")");
 	}
 	
-	public static function constructFromGoogle($_gdat, $_lang) {
-		
-		GeoProxy::log(__FILE__, __LINE__,
+	public static function constructFromGoogle($_gdat, $_lang) 
+	{
+		GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
 		              "constructFromGoogle");
 		
 		$gdat = new GeoGdat();
@@ -32,19 +34,43 @@ class GeoGdat {
 		$gdat->types = $_gdat->types;
 		$gdat->lang = $_lang;
 		$gdat->ext = "none";
-		$gdat->address_components = $_gdat->address_components;
+		foreach ($_gdat->address_components as $ad) {
+			$gdat->address_components[] = GeoGadc::constructFromGoogle($ad);
+		}
+		
+		return $gdat;
+	}
+	
+	public static function constructFromArray($_data) 
+	{
+		GeoProxy::log(LOG_DEBUG, __CLASS__, __FUNCTION__,
+		              "entering");
+		
+		$gdat = new GeoGdat();
+
+		$gdat->ext = $_data['ext'];
+		$gdat->lang = $_data['lang'];
+		$gdat->types = $_data['types'];
+		$gdat->formatted_address = $_data['formatted_address'];
+		
+		$geom = GeoGeom::constructFromArray($_data['geometry']);
+		// XXX
+		$gdat->geometry = $geom;
+		
+		foreach ($_data['address_components'] as $ad) {
+			$gdat->address_components[] = GeoGadc::constructFromArray($ad);
+		}
 		
 		return $gdat;
 	}
 	
 	// query must be urlencoded
-	public static function indexInRedis($_redis, $_query, $_lang, $_gdatid) {
+	public static function indexInRedis($_redis, $_query, $_gdatid) {
 		$_redis->sAdd("idx:gdatByQuery:$_query", $_gdatid);
-		$_redis->sAdd("idx:gdatByLang:$_lang", $_gdatid);
-		GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
+		GeoProxy::log(LOG_DEBUG, __CLASS__, __FUNCTION__,
 		              "query [$_query] cached, with gdat:id=[$_gdatid]");
 	}
-	
+
 	// va chercher chez google, et renvoie un array de resultats
 	// $_query must be url encoded
 	public static function retrieveFromGoogle($_query, $_lang)
@@ -154,58 +180,118 @@ class GeoGdat {
 			return false;
 			
 		case 1:
-			return $result[0];
+			break;
 			
 		default:
-			GeoProxy::log(LOG_WARNING, __FILE__, __LINE__,
+			GeoProxy::log(LOG_WARNING, __CLASS__, __FUNCTION__,
 			              "more than 1 id found ($num actually)");
 		}
+
+		return $result;
 	}
-	
-	public function storeInRedis($_redis) {
+
+	public function deleteFromRedis($_redis) {
 		
-		$id = $_redis->incr('next:gdat:id');
-		
-		// set keys
-		$_redis->set("gdat:$id:fa", $this->formatted_address);
-		$_redis->set("gdat:$id:ext", $this->ext);
-		$_redis->set("gdat:$id:lang", $this->lang);
-		$_redis->set("gdat:$id:ext", $this->ext);
-		
+		// del keys
+		$_redis->del("gdat:$id:fa");
+		$_redis->del("gdat:$id:ext");
+		$_redis->del("gdat:$id:lang");
+
+		$_redis->del("gdat:$id:types");
 		foreach ($this->types as $type) {
-			$_redis->sAdd("gdat:$id:types", $type);
 			// update index for this type
-			$_redis->sAdd("idx:gdatByType:$type", $id);
+			$_redis->sRem("idx:gdatByType:$type", $id);
 		}
-		
+
 		// address components
-		foreach ($this->address_components as $adc) {
-			if (! $gadcid = GeoGadc::existsInRedis($_redis, $adc)) {
-				$gadc = GeoGadc::constructFromGoogle($adc);
-				$gadcid = $gadc->storeInRedis($_redis);
-			}
-			
-			// attach to gdat, in a linked list to preserve order
-			$_redis->rPush("gdat:$id:adc", $gadcid);
-		}
-		
+		// XXX detach from gdat, but dont touch on gadc
+		$_redis->del("gdat:$id:adc");
+
 		// geometry
 		// first try to find an already existing geometry
-		if (! $geomid = GeoGeom::existsInRedis($_redis, $this->geometry)) {
-			$geom = GeoGeom::constructFromGoogle($this->geometry);
-			$geomid = $geom->storeInRedis($_redis);
+		//if ($geomid = GeoGeom::existsInRedis($_redis, $this->geometry)) {
+		if ($geomid = $this->geometry->inRedis($_redis)) {
+			$_redis->hdel("geom:$geomid:gdat", $this->lang);
 		}
-		// attach gdat -> geom
-		$_redis->set("gdat:$id:geom", $geomid);
-		// reverse path
-		$_redis->hset("geom:$geomid:gdat", $this->lang, $id);
+		// detach gdat -> geom
+		$_redis->del("gdat:$id:geom");
 		
 		// update indexes
 		$lang = $this->lang;
 		$ext = $this->ext;
-		$_redis->sadd("idx:gdatByLang:$lang", $id);
-		$_redis->sadd("idx:gdatByExt:$ext", $id);
+		$_redis->sRem("idx:gdatByLang:$lang");
+		$_redis->sRem("idx:gdatByExt:$ext");
+
+		return true;
+	}
+	
+	public function storeInRedis($_redis) 
+	{		
+		GeoProxy::log(LOG_DEBUG, __CLASS__, __FUNCTION__, 
+		              "entering (id = ".$this->id.")");
 		
+		if ($this->id == -1)
+			$this->id = $_redis->incr('next:gdat:id');
+		
+		$id = $this->id;
+		
+		// set keys
+		if (isset($this->formatted_address))
+			$_redis->set("gdat:$id:fa", $this->formatted_address);
+		if (isset($this->ext))
+			$_redis->set("gdat:$id:ext", $this->ext);
+		if (isset($this->lang))
+			$_redis->set("gdat:$id:lang", $this->lang);
+		
+		if (isset($this->types)) {
+			foreach ($this->types as $type) {
+				$_redis->sAdd("gdat:$id:types", $type);
+				// update index for this type
+				$_redis->sAdd("idx:gdatByType:$type", $id);
+			}
+		}
+		
+		// address components
+		if (isset($this->address_components)) {
+			foreach ($this->address_components as $adc) {
+				//if (! $gadcid = GeoGadc::existsInRedis($_redis, $adc)) {
+				if (! $gadcid = $adc->inRedis($_redis)) {
+					//$gadc = GeoGadc::constructFromGoogle($adc);
+					$gadcid = $adc->storeInRedis($_redis);
+				}
+				
+				// attach to gdat, in a linked list to preserve order
+				$_redis->rPush("gdat:$id:adc", $gadcid);
+			}
+		}
+		
+		// geometry
+		if (isset($this->geometry)) {
+			// first try to find an already existing geometry
+			if (! $geomid = $this->geometry->inRedis($_redis)) {
+				//$geom = GeoGeom::constructFromGoogle($this->geometry);
+				$geomid = $this->geometry->storeInRedis($_redis);
+			}
+			
+			// attach gdat -> geom
+			$_redis->set("gdat:$id:geom", $geomid);
+			// reverse path
+			$_redis->hset("geom:$geomid:gdat", $this->lang, $id);
+		}
+		
+		// update indexes
+		if (isset($this->lang)) {
+			$lang = $this->lang;
+			$_redis->sAdd("idx:gdatByLang:$lang", $id);	
+		}
+
+		if (isset($this->ext)) {
+			$ext = $this->ext;
+			$_redis->sAdd("idx:gdatByExt:$ext", $id);
+		}
+		
+		GeoProxy::log(LOG_DEBUG, __CLASS__, __FUNCTION__, 
+		              "leaving (id = ".$id.")");
 		return $id;
 	}
 }
