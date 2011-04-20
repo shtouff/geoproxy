@@ -10,7 +10,12 @@
 <?php endforeach;?>
 <h3>address: </h3>
 <?php foreach ($gdat->address_components as $ad):?>
-<li><?php echo $ad->long_name ."[" .$ad->short_name ."]"; ?></li>
+<li>
+<?php echo $ad->long_name ."[" .$ad->short_name ."]"; ?>
+ <?php foreach ($ad->types as $type): ?>
+ <?php echo $type; ?>
+ <?php endforeach;?>
+</li>
 <?php endforeach;?>
 
 <h3>geometry: </h3>
