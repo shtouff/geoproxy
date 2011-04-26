@@ -5,14 +5,16 @@
 	 <div>
 	 query:
 	 <input type="text" name="query"/>
-	 </div>
-	 <div>
 	 lang:
 	 <input type="text" name="lang"/>
-	 </div>
-	 <div>
 	 ext:
 	 <input type="text" name="ext"/>
+	 </div>
+	 <div>
+	 lat:
+	 <input type="text" name="lat"/>
+	 lng:
+	 <input type="text" name="lng"/>
 	 </div>
 	 <input type="submit">
 	 </form>

@@ -168,6 +168,19 @@ class GeoGeom {
     return false;
   }
   
+  public static function indexInRedis($_redis, $_lat, $_lng, $_gdatid)
+  {
+	  if (!$geomid = $_redis->get("gdat:$_gdatid:geom")) {
+		  GeoProxy::log(LOG_WARNING, __CLASS__, __FUNCTION__,
+		                "can't find a geomid for this gdatid");
+	  }
+	  $_redis->sAdd("idx:geomByLat:$_lat", $geomid);
+	  $_redis->sAdd("idx:geomByLng:$_lng", $geomid);
+	  GeoProxy::log(LOG_DEBUG, __CLASS__, __FUNCTION__,
+	                "coord [$_lat:$_lng] cached, with gdat:id=[$_gdatid], geom:id=[$geomid]");
+	  
+  }
+  
   public function inRedis($_redis) {
 	  
 	  $index = 'idx:geomBySerial';
@@ -244,7 +257,7 @@ class GeoGeom {
 	  foreach ($geomids as $geomid) {
 		  return $geomid;
 	  }
-	  GeoProxy::log(__FILE__, __LINE__,
+	  GeoProxy::log(LOG_DEBUG, __CLASS__, __FUNCTION__,
 	                "no geom:id found");
 	  return false;
   }

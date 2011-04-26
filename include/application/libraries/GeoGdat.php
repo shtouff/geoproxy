@@ -24,7 +24,7 @@ class GeoGdat {
 	
 	public static function constructFromGoogle($_gdat, $_lang) 
 	{
-		GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
+		GeoProxy::log(LOG_DEBUG, __CLASS__, __FUNCTION__,
 		              "constructFromGoogle");
 		
 		$gdat = new GeoGdat();
@@ -71,74 +71,7 @@ class GeoGdat {
 		              "query [$_query] cached, with gdat:id=[$_gdatid]");
 	}
 
-	// va chercher chez google, et renvoie un array de resultats
-	// $_query must be url encoded
-	public static function retrieveFromGoogle($_query, $_lang)
-	{
-		GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
-		              "asking google for: [". $_query ."]");
 		
-		$headers = array("Host: maps.google.com");
-		$url = sprintf('http://%s/maps/api/geocode/json?sensor=%s&address=%s&language=%s',
-		               'comtools3:6080',
-		               'false',
-		               $_query,
-		               $_lang
-		               );
-		
-		if (GOOGLE_MAPS_SIGN) {
-			$url .= ("&client=" . GOOGLE_MAPS_ID);
-			$url = GeoProxy::signUrl($url, GOOGLE_MAPS_KEY);
-			GeoProxy::log(LOG_DEBUG, __FILE__, __LINE__,
-			              "url signing requested, url is now: [". $url ."]");
-		}
-		
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); 
-		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-
-		if (! $json = curl_exec($ch)) {
-			GeoProxy::log(LOG_CRIT, __FILE__, __LINE__,
-			              "Curl error: " . curl_errno($ch));
-			curl_close($ch);
-			return ($result = array());
-		}
-		$google = json_decode($json);
-				
-		switch ($google->status) {
-			
-		case "OK":
-			GeoProxy::log(__FILE__, __LINE__,
-			              "data found in google");
-			if (count($google->results) > 1) {
-				GeoProxy::log(__FILE__, __LINE__,
-				              "more than 1 result found, using only the first");
-			}
-			curl_close($ch);
-			return $google->results;
-			
-		case "OVER_QUERY_LIMIT":
-			GeoProxy::log(LOG_CRIT, __FILE__, __LINE__,
-			              "OVER_QUERY_LIMIT reached !"
-			              );
-			break;
-
-		case "ZERO_RESULTS":
-			GeoProxy::log(LOG_WARNING, __FILE__, __LINE__,
-			              "ZERO_RESULTS found !"
-			              );
-			break;
-			
-		default:
-			GeoProxy::log(LOG_WARNING, __FILE__, __LINE__,
-			              "Google unknown status: " . $google->status);
-		}
-		curl_close($ch);
-		return ($result = array());
-	}
-	
 	public static function constructFromRedis($_redis, $_gdatid) {
 		
 		$gdat = new GeoGdat();
