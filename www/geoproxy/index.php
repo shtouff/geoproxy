@@ -53,7 +53,7 @@ switch (ENVIRONMENT)
  * as this file.
  *
  */
-	$system_path = '../include/system';
+	$system_path = '../../include/system';
 
 /*
  *---------------------------------------------------------------
@@ -69,7 +69,7 @@ switch (ENVIRONMENT)
  * NO TRAILING SLASH!
  *
  */
-	$application_folder = '../include/application';
+	$application_folder = '../../include/application';
 
 /*
  * --------------------------------------------------------------------
