@@ -8,7 +8,7 @@
 <?php foreach ($gdatids as $id):?>
 
 <li>
- <a href="<?php echo site_url("html/view/$id") ?>"><?php echo $id;?></a>
+ <a href="<?php echo site_url("geocoder/view/$id") ?>"><?php echo $id;?></a>
 </li>
 
 <?php endforeach;?>

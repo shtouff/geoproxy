@@ -5,7 +5,7 @@ class Forms extends CI_Controller {
   {
 	  $this->load->helper('url');
 	  
-	  redirect('/html/filter/', 'location');
+	  redirect('/geocoder/filter/', 'location');
   }
 
   public function filter()
@@ -18,8 +18,7 @@ class Forms extends CI_Controller {
 		  if ($value != "")
 			  $segs .= "$filter/$value/";
 	  }
-		  
-	  redirect('/html/filter/' . $segs, 'location');
+	  redirect('/geocoder/filter/' . $segs, 'location');
   } 
 }
 ?>
