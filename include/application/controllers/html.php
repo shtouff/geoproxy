@@ -23,7 +23,7 @@ class Html extends CI_Controller {
     $this->load->view('html/filter/header');
     $this->load->view('html/menu');
     
-    $proxy = GeoProxy::singleton();
+    $proxy = GeoProxy::getInstance();
     $data['gdatids'] = $proxy->getGdatIDs($filters);
     $this->load->view('html/filter/filter', $data);
     
@@ -41,10 +41,11 @@ class Html extends CI_Controller {
     $this->load->view('html/menu');
     
     $gdatids = func_get_args();
-    $proxy = GeoProxy::singleton();
+    $proxy = GeoProxy::getInstance();
     
     foreach ($gdatids as $id) {
 	    $data['gdat'] = $proxy->getGdat($id);
+	    $data['gdatid'] = $id;
       $this->load->view('html/view/gdat', $data);
     }
 

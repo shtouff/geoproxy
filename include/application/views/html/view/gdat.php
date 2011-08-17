@@ -1,6 +1,6 @@
 <div class="view">
 <h2><?php echo $gdat->formatted_address; ?></h2>
-<h3>gdatid: <?php echo $gdat->id; ?></h3>
+<h3>gdatid: <?php echo $gdatid; ?></h3>
 <h3>lang: <?php echo $gdat->lang; ?></h3>
 <h3>ext: <?php echo $gdat->ext; ?></h3>
 <h3>types: </h3>
@@ -23,7 +23,6 @@
 <table>
 <tr>
 <td>
-<li>geomid: <?php echo $gdat->geometry->id; ?>
 <li>serial: <?php echo $gdat->geometry->serial; ?>
 
 <li>location: <?php echo $gdat->geometry->location_type; ?>
@@ -52,7 +51,7 @@
 </li>
 </td>
 <td>
-<img src="http://maps.google.com/maps/api/staticmap?center=<?php echo $gdat->geometry->location->lat; ?>,<?php echo $gdat->geometry->location->lng; ?>&visible=<?php echo $gdat->geometry->viewport->southwest->lat; ?>,<?php echo $gdat->geometry->viewport->southwest->lng; ?>%7C<?php echo $gdat->geometry->viewport->northeast->lat; ?>,<?php echo $gdat->geometry->viewport->northeast->lng; ?>&size=640x480&maptype=roadmap&sensor=false"/>
+<img src="http://maps.google.com/maps/api/staticmap?center=<?php echo $gdat->geometry->location->lat ?>,<?php echo $gdat->geometry->location->lng?>&markers=color:blue%7Clabel:A%7C<?php echo $gdat->geometry->location->lat?>,<?php echo $gdat->geometry->location->lng?>&visible=<?php echo $gdat->geometry->viewport->southwest->lat?>,<?php echo $gdat->geometry->viewport->southwest->lng?>%7C<?php echo $gdat->geometry->viewport->northeast->lat?>,<?php echo $gdat->geometry->viewport->northeast->lng?>&size=640x350&sensor=false&maptype=terrain"/>
 </td>
 </tr>
 </table>

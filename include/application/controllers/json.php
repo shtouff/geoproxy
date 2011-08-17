@@ -19,7 +19,7 @@ class Json extends CI_Controller {
 	    $filters[$filter] = rawurldecode($value);
     }
     
-    $proxy = GeoProxy::singleton();
+    $proxy = GeoProxy::getInstance();
     $gdatids = $proxy->getGdatIDs($filters);
 		
 		$this->output->set_output(json_encode($gdatids));
@@ -34,7 +34,7 @@ class Json extends CI_Controller {
 		$gdatdata = json_decode(file_get_contents("php://input"),
 		                       true);
 		
-		$proxy = GeoProxy::singleton();
+		$proxy = GeoProxy::getInstance();
 		
 		$gdatid = $proxy->createGdat($gdatdata);
 		
@@ -53,13 +53,13 @@ class Json extends CI_Controller {
 		require_once APPPATH . "/libraries/GeoProxy.php";
     
 		$gdatids = func_get_args();
-    $proxy = GeoProxy::singleton();
+    $proxy = GeoProxy::getInstance();
     
     foreach ($gdatids as $id) {
 	    $gdats[] = $proxy->getGdat($id);
     }
     
-		$this->output->set_output(json_encode($gdats));
+    $this->output->set_output(json_encode($gdats));
 	}
 }
 ?>
