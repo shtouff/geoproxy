@@ -13,7 +13,8 @@ class Html extends CI_Controller {
   {
     require_once APPPATH . "/libraries/GeoProxy.php";
     $this->load->helper('form');
-
+    $this->load->helper('url');
+    
     // build filter from uri
     $filters = $this->uri->uri_to_assoc(3);
     foreach ($filters as $filter=>$value) {
