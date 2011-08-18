@@ -18,7 +18,7 @@ class Forms extends CI_Controller {
 		  if ($value != "")
 			  $segs .= "$filter/$value/";
 	  }
-	  redirect('/geocoder/filter/' . $segs, 'location');
+	  redirect('/geocoder/filter/output/html/' . $segs, 'location');
   } 
 }
 ?>

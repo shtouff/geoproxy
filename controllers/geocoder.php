@@ -15,7 +15,7 @@ class Geocoder extends CI_Controller {
   {
 	  $this->load->helper('url');
 	  
-	  redirect('/geocoder/filter/', 'location');
+	  redirect('/geocoder/filter/output/html', 'location');
   }
 
   // list gdat ids, possibly filtered
