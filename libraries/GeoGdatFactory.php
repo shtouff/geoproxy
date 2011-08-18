@@ -19,11 +19,15 @@ class GeoGdatFactory extends GeoAbstractFactory
 		$geomfactory = new GeoGeomFactory();
 		$gadcfactory = new GeoGadcFactory();
 		
+		if (! ($gdat->formatted_address = $_redisConn->get("gdat:$_redisID:fa"))) {
+			return null;
+		}
+
 		// geometry
 		$geomid = $_redisConn->get("gdat:$_redisID:geom");
 		$gdat->geometry = $geomfactory->make(new RedisGeoGeomFactoryData($_redisConn, $geomid));
-		
-		$gdat->formatted_address = $_redisConn->get("gdat:$_redisID:fa");
+
+		// other attributes
 		$gdat->lang = $_redisConn->get("gdat:$_redisID:lang");
 		$gdat->ext = $_redisConn->get("gdat:$_redisID:ext");
 		$gdat->types = $_redisConn->sMembers("gdat:$_redisID:types");
