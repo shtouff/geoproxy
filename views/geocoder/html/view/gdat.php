@@ -1,6 +1,6 @@
 <div class="view">
-<h2><?php echo $gdat->formatted_address; ?></h2>
-<h3>gdatid: <?php echo $gdatid; ?></h3>
+<h2>ID: <?php echo $gdatid; ?></h2>
+<h3>formatted address: <?php echo $gdat->formatted_address; ?></h3>
 <h3>lang: <?php echo $gdat->lang; ?></h3>
 <h3>ext: <?php echo $gdat->ext; ?></h3>
 <h3>types: </h3>

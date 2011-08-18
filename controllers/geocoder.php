@@ -105,10 +105,21 @@ class Geocoder extends CI_Controller {
     switch ($output) {
     case 'json':
 	    $this->output->set_content_type('application/json');
+	    
+	    $data['status'] = 'OK';
 	    foreach ($gdatids as $id) {
-		    $gdats[] = $this->proxy->getGdat($id);
+		    if (($gdat = $this->proxy->getGdat($id)) != null) {
+			    $data['results'][] = array($id, $gdat);
+		    } else {
+			    $data['status'] = 'PARTIAL_RESULT';
+		    }
 	    }
-	    $this->output->set_output(json_encode($gdats));
+	    
+	    if ($data['status'] == 'PARTIAL_RESULT' && count($gdatids) == 1) {
+		    $data['status'] = 'ZERO_RESULT';
+	    }
+	    
+	    $this->output->set_output(json_encode($data));
 	    break;
 	    
     case 'html':
@@ -118,9 +129,13 @@ class Geocoder extends CI_Controller {
 	    $this->load->view('geocoder/html/menu');
 	  
 	    foreach ($gdatids as $id) {
-		    $data['gdat'] = $this->proxy->getGdat($id);
 		    $data['gdatid'] = $id;
-		    $this->load->view('geocoder/html/view/gdat', $data);
+		    if (($gdat = $this->proxy->getGdat($id)) != null) {
+			    $data['gdat'] = $gdat;
+			    $this->load->view('geocoder/html/view/gdat', $data);
+		    } else {
+			    $this->load->view('geocoder/html/view/gdatnotfound', $data);
+		    }
 	    }
 	    
 	    $this->load->view('geocoder/html/view/footer');  
