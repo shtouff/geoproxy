@@ -23,7 +23,6 @@ gadc:X:lname => string
 
 # geometry data
 geom:X:serial => string (serial number)
-geom:X:gdat => hash of (lang => gdat:id)
       :loc:type => string (location_type)
           :lat => string (location latitude)
           :lng => string (location longitude)
@@ -43,8 +42,8 @@ pk:gdatByFormattedAddress:rawurlencode($formatted_address):$lang => string (gdat
 # indexes
 idx:geomBySerial:md5($result) => set of string (gdat:id)
 # (use intersection of these two sets to get ids of geodata matching those coordinates)
-idx:geomByLat:$lat => set of string (gdat:id)
-idx:geomByLng:$ng => set of string (gdat:id)
+idx:gdatByLat:$lat => set of string (gdat:id)
+idx:gdatByLng:$ng => set of string (gdat:id)
 # tags: type (use these sets to know the id of geodata matching the tag. Use unions / intersections to simulate JOINS)
 idx:gdatByType:political => set of string (gdat:id) having type: political
 idx:gdatByType:locality => set of string (gdat:id) having type: locality
