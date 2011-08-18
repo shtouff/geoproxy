@@ -49,15 +49,19 @@ class Geocoder extends CI_Controller {
 	    }
     }
     
-    $data['results'] = $this->proxy->getGdatIDs($searchFilters);
+    $results = array();
+    if (count($searchFilters) > 0) {
+	    $results = $this->proxy->getGdatIDs($searchFilters);
+    } 
     
     switch ($output) {
     case 'json':
 	    $this->output->set_content_type('application/json');
-	    if (count($data['results']) == 0) {
+	    if (count($results) == 0) {
 		    $data['status'] = 'ZERO_RESULT';
 	    } else {
 		    $data['status'] = 'OK';
+		    $data['results'] = $results;
 	    }
 	    $this->output->set_output(json_encode($data));
 	    break;
@@ -65,7 +69,10 @@ class Geocoder extends CI_Controller {
     case 'html':
 	    $this->load->view('geocoder/html/filter/header');
 	    $this->load->view('geocoder/html/menu');
-	    $this->load->view('geocoder/html/filter/filter', $data);
+	    if (count($results) > 0) {
+		    $data['results'] = $results;
+		    $this->load->view('geocoder/html/filter/filter', $data);
+	    }
 	    $this->load->view('geocoder/html/filter/footer');
 	    break;
     }
