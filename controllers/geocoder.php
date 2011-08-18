@@ -49,12 +49,17 @@ class Geocoder extends CI_Controller {
 	    }
     }
     
-    $data['gdatids'] = $this->proxy->getGdatIDs($searchFilters);
+    $data['results'] = $this->proxy->getGdatIDs($searchFilters);
     
     switch ($output) {
     case 'json':
 	    $this->output->set_content_type('application/json');
-	    $this->output->set_output(json_encode($data['gdatids']));
+	    if (count($data['results']) == 0) {
+		    $data['status'] = 'ZERO_RESULT';
+	    } else {
+		    $data['status'] = 'OK';
+	    }
+	    $this->output->set_output(json_encode($data));
 	    break;
 	    
     case 'html':
