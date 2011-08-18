@@ -41,43 +41,65 @@ class Geocoder extends CI_Controller {
 	    }
     }
     
+    $data['status'] = "OK";
+    
     // rebuild final filters
     $searchFilters = array();
     foreach ($filters as $filter=>$value) {
-	    if ($filter != 'output') {
+	    switch ($filter) {
+	    case 'output':
+		    break;
+	    case 'ext':
+	    case 'lang':
+	    case 'lat':
+	    case 'lng':
+	    case 'query':
 		    $searchFilters[$filter] = rawurldecode($value);
+		    break;
+		    
+	    default:
+		    $data['status'] = 'ERROR';
+		    $data['errmsg'] = "unknown filter: $filter";
+		    $searchFilters = array();
 	    }
     }
     
-    $results = array();
-    if (count($searchFilters) > 0) {
-	    $results = $this->proxy->getGdatIDs($searchFilters);
-    } 
+    if ($data['status'] == 'OK') {
+	    $data['results'] = array();
+	    if (count($searchFilters) > 0) {
+		    $data['results'] = $this->proxy->getGdatIDs($searchFilters);
+	    }
+	    
+	    if (count($data['results']) == 0) {
+		    $data['status'] = 'ZERO_RESULT';
+	    }
+    }
     
     switch ($output) {
     case 'json':
 	    $this->output->set_content_type('application/json');
-	    if (count($results) == 0) {
-		    $data['status'] = 'ZERO_RESULT';
-	    } else {
-		    $data['status'] = 'OK';
-		    $data['results'] = $results;
-	    }
 	    $this->output->set_output(json_encode($data));
 	    break;
 	    
     case 'html':
 	    $this->load->view('geocoder/html/filter/header');
 	    $this->load->view('geocoder/html/menu');
-	    if (count($results) > 0) {
-		    $data['results'] = $results;
-		    $this->load->view('geocoder/html/filter/filter', $data);
+	    switch ($data['status']) {
+	    case 'ZERO_RESULT':
+		    $this->load->view('geocoder/html/filter/zero_result', $data);
+		    break;
+	    case 'ERROR':
+		    $this->load->view('geocoder/html/filter/error', $data);
+		    break;
+	    case 'OK':
+		    $this->load->view('geocoder/html/filter/result', $data);
+		    break;
 	    }
 	    $this->load->view('geocoder/html/filter/footer');
 	    break;
     }
   }  
-
+  
   // view a list of particular gdatids
   public function view()
   {
