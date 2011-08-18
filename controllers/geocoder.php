@@ -97,7 +97,7 @@ class Geocoder extends CI_Controller {
 	    if ($filter != 'output') {
 		    $gdatids[] = $filter;
 		    if ($value != false) {
-			    $gdatids[] = $value;
+			    $gdatids[] = intval($value);
 		    }
 	    }
     }
