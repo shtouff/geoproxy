@@ -1,4 +1,5 @@
 ## data model
+
 # sequencies
 next:gdat:id => string
 next:gadc:id => string
