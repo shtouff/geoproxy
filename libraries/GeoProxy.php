@@ -15,7 +15,7 @@ require_once $incdir . '/GeoGadcFactory.php';
 require_once $incdir . '/RedisQuerier.php';
 require_once $incdir . '/GoogleQuerier.php';
 
-$cfgdir = realpath(dirname(__FILE__) . '/../../../config');
+$cfgdir = realpath(dirname(__FILE__) . '/../../config');
 require_once $cfgdir . '/backend.google.inc.php';
 require_once $cfgdir . '/backend.log.inc.php';
 require_once $cfgdir . '/backend.redis.inc.php';
