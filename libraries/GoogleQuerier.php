@@ -13,7 +13,7 @@ class GoogleQuerier
 		
 		$headers = array("Host: maps.google.com");
 		$url = sprintf('http://%s/maps/api/geocode/json?sensor=%s&address=%s&language=%s',
-		               'comtools3:6080',
+		               GOOGLE_MAPS_SERVER .":". GOOGLE_MAPS_PORT,
 		               'false',
 		               $_query,
 		               $_lang
@@ -76,7 +76,7 @@ class GoogleQuerier
 		
 		$headers = array("Host: maps.google.com");
 		$url = sprintf('http://%s/maps/api/geocode/json?sensor=%s&latlng=%s,%s&language=%s',
-		               'comtools3:6080',
+		               GOOGLE_MAPS_SERVER .":". GOOGLE_MAPS_PORT,
 		               'false',
 		               $_lat, $_lng,
 	                 $_lang
