@@ -34,10 +34,12 @@ class GeoProxy
 	// singleton, so private constructor
 	private function __construct()
 	{
-		$rqconfig = new RedisQuerierConfig(array('writeserver' => CFG_GEOPROXY_REDIS_MASTER,
-		                                         'writeport' => 6379,
-		                                         'readserver' => CFG_GEOPROXY_REDIS_MASTER,
-		                                         'readport' => 6379));
+		$rqconfig = new RedisQuerierConfig(array('writeserver' => CFG_GEOPROXY_REDIS_WRITE_HOST,
+		                                         'writeport' => CFG_GEOPROXY_REDIS_WRITE_PORT,
+		                                         'writedb' => CFG_GEOPROXY_REDIS_WRITE_DB,
+		                                         'readserver' => CFG_GEOPROXY_REDIS_READ_HOST,
+		                                         'readport' => CFG_GEOPROXY_REDIS_READ_PORT,
+		                                         'readdb' => CFG_GEOPROXY_REDIS_READ_DB));
 		$this->rq = new RedisQuerier($rqconfig);
 		$this->gq = new GoogleQuerier();
 	}
