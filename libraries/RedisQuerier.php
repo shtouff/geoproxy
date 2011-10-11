@@ -1,7 +1,7 @@
 <?php
 
 class RedisQuerier {
-  
+
 	private $readConn;
 	private $writeConn;
 	
@@ -14,6 +14,9 @@ class RedisQuerier {
 
 		$this->readConn->connect($_config->readserver, $_config->readport);
 		$this->writeConn->connect($_config->writeserver, $_config->writeport);
+
+		$this->readConn->select($_config->readdb);
+		$this->writeConn->select($_config->writedb);
 	}
 	
 	// search objects in redis
