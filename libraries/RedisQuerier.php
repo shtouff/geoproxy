@@ -267,17 +267,21 @@ class RedisQuerierConfig
 {
 	public $readserver;
 	public $readport;
-
+	public $readdb;
+	
 	public $writeserver;
 	public $writeport;
+	public $writedb;
 
 	public function  __construct(array $_data)
 	{
 		$this->readserver = $_data['readserver'];
 		$this->readport = $_data['readport'];
-		
+		$this->readdb = $_data['readdb'];
+
 		$this->writeserver = $_data['writeserver'];
 		$this->writeport = $_data['writeport'];
+		$this->writedb = $_data['writedb'];
 	}
 }
 ?>
